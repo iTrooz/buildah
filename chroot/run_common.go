@@ -518,8 +518,11 @@ func runUsingChroot(spec *specs.Spec, bundlePath string, ctty *os.File, stdin io
 	setPdeathsig(cmd.Cmd)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = stdin, stdout, stderr
 	cmd.Dir = "/"
-	os.Setenv("_CONTAINERS_UNSHARE_MODE", "never")
-	cmd.Env = append(os.Environ(), fmt.Sprintf("LOGLEVEL=%d", logrus.GetLevel()), "_CONTAINERS_UNSHARE_MODE=never")
+	cmd.Env = append(os.Environ(), fmt.Sprintf("LOGLEVEL=%d", logrus.GetLevel()))
+	if os.Getenv("BUILDAH_UNPRIVILEGED_MODE") == "1" {
+		os.Setenv("_CONTAINERS_UNSHARE_MODE", "never")
+		cmd.Env = append(cmd.Env, "_CONTAINERS_UNSHARE_MODE=never")
+	}
 	if ctty != nil {
 		cmd.Setsid = true
 		cmd.Ctty = ctty
