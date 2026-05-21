@@ -147,9 +147,12 @@ func setPlatformUnshareOptions(spec *specs.Spec, cmd *unshare.Cmd) error {
 		}
 	}
 
-	shouldSkipUnshare := os.Getenv("_CONTAINERS_UNSHARE_MODE") == "never"
-	// POC: always skip unshare - set flags to 0
-	cmd.UnshareFlags = 0
+	shouldSkipUnshare := os.Getenv("_CONTAINERS_UNSHARE_MODE") == "never" || os.Getenv("BUILDAH_UNPRIVILEGED_MODE") == "1"
+	if shouldSkipUnshare {
+		cmd.UnshareFlags = 0
+	} else {
+		cmd.UnshareFlags = syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS
+	}
 	requestedUserNS := false
 	for _, ns := range spec.Linux.Namespaces {
 		if ns.Type == specs.UserNamespace {
