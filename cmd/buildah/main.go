@@ -20,7 +20,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.podman.io/common/pkg/config"
 	"go.podman.io/storage"
-	"go.podman.io/storage/pkg/unshare"
 )
 
 const (
@@ -166,7 +165,7 @@ func before(cmd *cobra.Command) error {
 		return nil
 	}
 	debugCapabilities()
-	unshare.MaybeReexecUsingUserNamespace(false)
+	// unshare.MaybeReexecUsingUserNamespace(false)
 	if globalFlagResults.CPUProfile != "" {
 		globalFlagResults.cpuProfileFile, err = os.Create(globalFlagResults.CPUProfile)
 		if err != nil {

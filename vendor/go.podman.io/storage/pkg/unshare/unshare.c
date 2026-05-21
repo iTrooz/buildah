@@ -302,11 +302,24 @@ void _containers_unshare(void)
 	int flags, pidfd, continuefd, n, pgrp, sid, ctty;
 	char buf[2048];
 
+	char *unshare_mode = getenv("_CONTAINERS_UNSHARE_MODE");
+	if (unshare_mode != NULL && strcmp(unshare_mode, "never") == 0) {
+		fprintf(stderr, "DEBUG: _containers_unshare: _CONTAINERS_UNSHARE_MODE=never (pid=%d), skipping entirely\n", getpid());
+		return;
+	}
+
 	flags = _containers_unshare_parse_envint("_Containers-unshare");
+	fprintf(stderr, "DEBUG: _containers_unshare: pid=%d, flags=%d (from _Containers-unshare env)\n", getpid(), flags);
 	if (flags == -1) {
 		return;
 	}
+	// If _Containers-unshare=0, skip all namespace creation (for unprivileged containers)
+	if (flags == 0) {
+		fprintf(stderr, "DEBUG: _Containers-unshare=0, skipping unshare entirely\n");
+		return;
+	}
 	if ((flags & CLONE_NEWUSER) != 0) {
+		fprintf(stderr, "DEBUG: About to call unshare(CLONE_NEWUSER), flags=%d\n", flags);
 		if (unshare(CLONE_NEWUSER) == -1) {
 			fprintf(stderr, "Error during unshare(CLONE_NEWUSER): %m\n");
                         _check_proc_sys_file (_max_user_namespaces);
@@ -314,6 +327,8 @@ void _containers_unshare(void)
 			_exit(1);
 		}
 	}
+	// When _Containers-unshare=0, we skip everything including pipe communication
+	// This is for unprivileged mode where we don't want any namespace operations
 	pidfd = _containers_unshare_parse_envint("_Containers-pid-pipe");
 	if (pidfd != -1) {
 		snprintf(buf, sizeof(buf), "%llu", (unsigned long long) getpid());

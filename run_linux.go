@@ -941,7 +941,9 @@ func setupNamespaces(_ *logrus.Logger, g *generate.Generator, namespaceOptions d
 	}
 
 	// If we've got mappings, we're going to have to create a user namespace.
+	fmt.Fprintf(os.Stderr, "DEBUG: setupNamespaces: len(UIDMap)=%d len(GIDMap)=%d configureUserns=%v\n", len(idmapOptions.UIDMap), len(idmapOptions.GIDMap), configureUserns)
 	if len(idmapOptions.UIDMap) > 0 || len(idmapOptions.GIDMap) > 0 || configureUserns {
+		fmt.Fprintf(os.Stderr, "DEBUG: setupNamespaces: Adding user namespace (CLONE_NEWUSER will be requested at runtime)\n")
 		if err := g.AddOrReplaceLinuxNamespace(string(specs.UserNamespace), ""); err != nil {
 			return false, "", false, fmt.Errorf("adding new %q namespace for run: %w", string(specs.UserNamespace), err)
 		}
@@ -1364,7 +1366,7 @@ func setupSpecialMountSpecChanges(spec *specs.Spec, shmSize string) ([]specs.Mou
 	isRootless := unshare.IsRootless()
 	isNewUserns := false
 	isNetns := false
-	isPidns := false
+	// isPidns := false  // unused when proc mount is disabled
 	isIpcns := false
 
 	for _, namespace := range spec.Linux.Namespaces {
@@ -1374,7 +1376,7 @@ func setupSpecialMountSpecChanges(spec *specs.Spec, shmSize string) ([]specs.Mou
 		case specs.UserNamespace:
 			isNewUserns = true
 		case specs.PIDNamespace:
-			isPidns = true
+			// isPidns = true  // unused when proc mount is disabled
 		case specs.IPCNamespace:
 			isIpcns = true
 		}
@@ -1429,16 +1431,17 @@ func setupSpecialMountSpecChanges(spec *specs.Spec, shmSize string) ([]specs.Mou
 		}
 		mounts = addOrReplaceMount(mounts, devMqueueMnt)
 	}
-	if isUserns && !isPidns {
-		proc := "/proc"
-		procMount := specs.Mount{
-			Destination: proc,
-			Type:        "bind",
-			Source:      proc,
-			Options:     []string{bind.NoBindOption, "rbind", "nosuid", "noexec", "nodev"},
-		}
-		mounts = addOrReplaceMount(mounts, procMount)
-	}
+	// SKIP /dev and /proc mounts - hardcoded for unprivileged mode
+	// if isUserns && !isPidns {
+	// 	proc := "/proc"
+	// 	procMount := specs.Mount{
+	// 		Destination: proc,
+	// 		Type:        "bind",
+	// 		Source:      proc,
+	// 		Options:     []string{bind.NoBindOption, "rbind", "nosuid", "noexec", "nodev"},
+	// 	}
+	// 	mounts = addOrReplaceMount(mounts, procMount)
+	// }
 
 	if addCgroup {
 		cgroupMnt := specs.Mount{

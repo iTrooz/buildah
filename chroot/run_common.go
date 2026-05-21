@@ -515,7 +515,8 @@ func runUsingChroot(spec *specs.Spec, bundlePath string, ctty *os.File, stdin io
 	setPdeathsig(cmd.Cmd)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = stdin, stdout, stderr
 	cmd.Dir = "/"
-	cmd.Env = []string{fmt.Sprintf("LOGLEVEL=%d", logrus.GetLevel())}
+	os.Setenv("_CONTAINERS_UNSHARE_MODE", "never")
+	cmd.Env = append(os.Environ(), fmt.Sprintf("LOGLEVEL=%d", logrus.GetLevel()), "_CONTAINERS_UNSHARE_MODE=never")
 	if ctty != nil {
 		cmd.Setsid = true
 		cmd.Ctty = ctty
@@ -715,7 +716,10 @@ func runUsingChrootExecMain() {
 		os.Exit(1)
 	}
 
-	if err = setSeccomp(options.Spec); err != nil {
+	// POC: skip seccomp in unprivileged mode
+	if os.Getenv("_CONTAINERS_UNSHARE_MODE") == "never" {
+		fmt.Fprintf(os.Stderr, "DEBUG: skipping seccomp (unprivileged mode)\n")
+	} else if err = setSeccomp(options.Spec); err != nil {
 		fmt.Fprintf(os.Stderr, "error setting seccomp filter for process: %v\n", err)
 		os.Exit(1)
 	}
@@ -725,9 +729,12 @@ func runUsingChrootExecMain() {
 	if user.UID != 0 {
 		keepCaps = []string{"CAP_SETUID"}
 	}
-	if err := setCapabilities(options.Spec, keepCaps...); err != nil {
-		fmt.Fprintf(os.Stderr, "error setting capabilities for process: %v\n", err)
-		os.Exit(1)
+	// POC: skip capabilities in unprivileged mode
+	if os.Getenv("_CONTAINERS_UNSHARE_MODE") != "never" {
+		if err := setCapabilities(options.Spec, keepCaps...); err != nil {
+			fmt.Fprintf(os.Stderr, "error setting capabilities for process: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	logrus.Debugf("setting uid")

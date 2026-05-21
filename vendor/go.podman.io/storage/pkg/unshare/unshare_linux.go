@@ -102,6 +102,13 @@ func (c *Cmd) Start() (retErr error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
+	// Skip all namespace sync machinery if UnshareFlags is 0 (unprivileged mode POC)
+	if c.UnshareFlags == 0 {
+		fmt.Fprintf(os.Stderr, "DEBUG: unshare.Start: UnshareFlags=0, skipping all sync machinery\n")
+		err := c.Cmd.Start()
+		return err
+	}
+
 	// Set an environment variable to tell the child to synchronize its startup.
 	if c.Env == nil {
 		c.Env = os.Environ()
@@ -481,6 +488,12 @@ func bailOnError(err error, format string, a ...any) { //nolint:revive,goprintff
 
 // MaybeReexecUsingUserNamespace re-exec the process in a new namespace
 func MaybeReexecUsingUserNamespace(evenForRoot bool) {
+	fmt.Printf("MaybeReexecUsingUserNamespace: I am %v %v\n", os.Getuid(), GetRootlessUID())
+	// If _CONTAINERS_UNSHARE_MODE=never, skip userns creation entirely (for unprivileged containers)
+	if os.Getenv("_CONTAINERS_UNSHARE_MODE") == "never" {
+		fmt.Printf("MaybeReexecUsingUserNamespace: _CONTAINERS_UNSHARE_MODE=never, skipping reexec\n")
+		return
+	}
 	// If we've already been through this once, no need to try again.
 	if os.Geteuid() == 0 && GetRootlessUID() > 0 {
 		return
