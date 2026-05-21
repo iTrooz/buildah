@@ -722,8 +722,8 @@ func runUsingChrootExecMain() {
 		os.Exit(1)
 	}
 
-	// POC: skip seccomp in unprivileged mode
-	if os.Getenv("_CONTAINERS_UNSHARE_MODE") == "never" {
+	// Skip seccomp in unprivileged mode
+	if os.Getenv("BUILDAH_UNPRIVILEGED_MODE") == "1" {
 		fmt.Fprintf(os.Stderr, "DEBUG: skipping seccomp (unprivileged mode)\n")
 	} else if err = setSeccomp(options.Spec); err != nil {
 		fmt.Fprintf(os.Stderr, "error setting seccomp filter for process: %v\n", err)
@@ -735,8 +735,8 @@ func runUsingChrootExecMain() {
 	if user.UID != 0 {
 		keepCaps = []string{"CAP_SETUID"}
 	}
-	// POC: skip capabilities in unprivileged mode
-	if os.Getenv("_CONTAINERS_UNSHARE_MODE") != "never" {
+	// Skip capabilities in unprivileged mode
+	if os.Getenv("BUILDAH_UNPRIVILEGED_MODE") != "1" {
 		if err := setCapabilities(options.Spec, keepCaps...); err != nil {
 			fmt.Fprintf(os.Stderr, "error setting capabilities for process: %v\n", err)
 			os.Exit(1)
