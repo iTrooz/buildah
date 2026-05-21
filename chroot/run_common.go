@@ -131,6 +131,9 @@ func RunUsingChroot(spec *specs.Spec, bundlePath, homeDir string, stdin io.Reade
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = stdin, stdout, stderr
 	cmd.Dir = "/"
 	cmd.Env = []string{fmt.Sprintf("LOGLEVEL=%d", logrus.GetLevel())}
+	if os.Getenv("BUILDAH_UNPRIVILEGED_MODE") == "1" {
+		cmd.Env = append(cmd.Env, "BUILDAH_UNPRIVILEGED_MODE=1")
+	}
 
 	interrupted := make(chan os.Signal, 100)
 	cmd.Hook = func(int) error {
