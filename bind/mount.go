@@ -26,10 +26,11 @@ import (
 func SetupIntermediateMountNamespace(spec *specs.Spec, bundlePath string) (unmountAll func() error, err error) {
 	defer stripNoBindOption(spec)
 
-	// SKIP MOUNT NAMESPACE CREATION - hardcoded for unprivileged mode
-	// TODO: make this conditional based on environment / capabilities
-	fmt.Fprintf(os.Stderr, "DEBUG: SetupIntermediateMountNamespace: skipping mount namespace (hardcoded bypass)\n")
-	return func() error { return nil }, nil
+	// Skip mount namespace creation in unprivileged mode
+	if os.Getenv("BUILDAH_UNPRIVILEGED_MODE") == "1" {
+		fmt.Fprintf(os.Stderr, "DEBUG: SetupIntermediateMountNamespace: skipping (BUILDAH_UNPRIVILEGED_MODE=1)\n")
+		return func() error { return nil }, nil
+	}
 
 	// We expect a root directory to be defined.
 	if spec.Root == nil {
